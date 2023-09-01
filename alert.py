@@ -23,15 +23,13 @@ def send_email(txt):
         print("Unable to send email", ex)
 
 places = {}
+RENT_BASE_URL = "https://www.rightmove.co.uk/property-to-rent/find.html"
+EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
+SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
+locations = [SOUTH_LONDON, EAST_LONDON]
 
-searches = [
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=STATION%5E4001&minBedrooms=2&maxPrice=1750&radius=0.5&propertyTypes=&mustHave=&dontShohttps://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=STATION%5E7610&minBedrooms=2&maxPrice=1750&radius=0.5&propertyTypes=&mustHave=&dontShow=&furnishTypes=&keywords=",# reading
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=BRANCH%5E102784&minBedrooms=2&propertyTypes=&includeLetAgreed=true&mustHave=&dontShow=&furnishTypes=&keywords=", #l and q
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=STATION%5E8873&minBedrooms=2&maxPrice=1750&radius=0.5&propertyTypes=&mustHave=&dontShoww=&furnishTypes=&keywords=", #Greenwich
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=STATION%5E8984&minBedrooms=2&maxPrice=1750&radius=0.5&propertyTypes=&mustHave=&dontShow=&furnishTypes=&keywords=", #Sydenham
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=BRANCH%5E97670&minBedrooms=2&maxPrice=1750&propertyTypes=&includeLetAgreed=true&mustHave=&dontShow=&furnishTypes=&keywords=", #Folio
-            "https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=REGION%5E70328&minBedrooms=2&maxPrice=1750&propertyTypes=&mustHave=&dontShow=&furnishTypes=&keywords="
-            ]
+def right_move_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0):
+    return f"{RENT_BASE_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&dontShow={'%2C'.join(dontShow)}"
 
 def find(req,first):
     try:
@@ -55,12 +53,14 @@ def find(req,first):
         time.sleep(5)
 
 for i in range(10):
-    for s in searches:
-        find(s, True)
+    for location in locations:
+        url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"])
+        find(req=url, first=True)
         time.sleep(2)
 
 while True:
-    for s in searches:
-        find(s, False)
+    for location in locations:
+        url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"])
+        find(req=url, first=False)
         time.sleep(2)
     time.sleep(60)
