@@ -5,7 +5,12 @@ description = ""
 authors = [
     {name = "Kerwinson", email = "joshua.hall2020@outlook.com"},
 ]
-dependencies = []
+dependencies = [
+    "twilio>=8.7.0",
+    "beautifulsoup4>=4.12.2",
+    "requests>=2.31.0",
+    "bs4>=0.0.1",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}

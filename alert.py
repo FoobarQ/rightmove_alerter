@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import smtplib
 import time
 from email.mime.text import MIMEText
-from twilio.rest import Client 
 
 def send_email(txt):
     sender = 'noreply@gmail.com'
@@ -22,18 +21,6 @@ def send_email(txt):
         print("Send email2")
     except Exception as ex:
         print("Unable to send email", ex)
-
-def send_text(txt,number):
-    account_sid = '<ACCOUNT_SID>' 
-    auth_token = '<AUTH_TOKEN>' 
-    client = Client(account_sid, auth_token) 
-    
-    message = client.messages.create(  
-                                messaging_service_sid='<MESSAGING_SERVICE_SID>', 
-                                body=txt,      
-                                to=number
-                            )
-
 
 places = {}
 
