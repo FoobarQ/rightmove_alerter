@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import smtplib
 import time
 from email.mime.text import MIMEText
+import random
 
 def send_email(txt):
     sender = 'noreply@gmail.com'
@@ -22,45 +23,86 @@ def send_email(txt):
     except Exception as ex:
         print("Unable to send email", ex)
 
-places = {}
-RENT_BASE_URL = "https://www.rightmove.co.uk/property-to-rent/find.html"
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
 SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
-locations = [SOUTH_LONDON, EAST_LONDON]
+BASE_URL = "https://www.rightmove.co.uk"
+RENT_URL = f"{BASE_URL}/property-to-rent/find.html"
 
-def right_move_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0):
-    return f"{RENT_BASE_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&dontShow={'%2C'.join(dontShow)}"
+places = {
+    "South London": SOUTH_LONDON,
+    "East London": EAST_LONDON
+}
 
-def find(req,first):
+def right_move_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0, index: int = 0):
+    return f"{RENT_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&index={index}&dontShow={'%2C'.join(dontShow)}&furnishTypes=&keywords="
+
+def find(search_url: str):
+    search_response = requests.get(search_url)
+    found_all_properties = not search_response.ok
+    if found_all_properties:
+        raise Exception("No more properties!")
+    
+    soup = BeautifulSoup(search_response.text, 'html.parser')
+    html = soup.find_all("div", {"class": "propertyCard-wrapper"})
+
+    property_count = len(html)
+    found_all_properties = property_count == 0
+    if (found_all_properties):    
+        raise Exception("No more properties!")
+
+    for element in html[1:]:    #   skip the promoted ad at the top
+        description_element = element.find("div", {"class": "propertyCard-description"})
+        relative_url: str = description_element.find("a").get('href')
+        ad_url = f"{BASE_URL}{relative_url}"
+        url_parts = relative_url.replace("#", "").split("/")
+        found_all_properties = len(url_parts) < 2
+
+        if (found_all_properties):
+            raise Exception("No more properties!")
+
+        id = url_parts[2]
+        description: str = description_element.find("span").get_text()
+
+        price: str = element.find("span", {"class": 'propertyCard-priceValue'}).get_text()
+        price = price.replace(",", "").replace("£", "").replace("pcm", "")
+        price = int(price)
+
+        address = element.find("address")
+        street_address: str = address.find("span").get_text()
+        country_code: str = address.find("meta", {"itemprop": 'addressCountry'}).get("content")
+
+        title: str = element.find("h2", {"class": "propertyCard-title"}).get_text()
+        title = title.strip()
+        
+        #   TODO: replaced with a database update
+        #   if not in database, CREATE
+        #   else throw raise("everything updated")
+        print("")
+        print(f"id: {id}")
+        print(f"title: {title}")
+        print(f"street address: {street_address}")
+        print(f"country: {country_code}")
+        print(f"price: {price}")
+        print(f"description: {description}")
+        print(f"url: {ad_url}")
+        print("")
+
+    return property_count
+
+for area, location in places.items():
+    index = 0
+    page_number = 1
     try:
-        print(req)
-        r = requests.get(req)
-        soup = BeautifulSoup(r.text, 'html.parser')
+        while True:
+            print(f"page {page_number}")
+            page_number += 1
+            url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"], index=index)
+            index += find(url)
 
-        props = soup.find_all("div", {"class": "propertyCard-section"})
-
-        for i in props:
-            spans = i.find('span')
-            for a in i.find_all("a", {"class": "propertyCard-link"}, href=True):
-                if(len(spans.text)>0):
-                    if('https://www.rightmove.co.uk' + a['href'] not in places):
-                        places['https://www.rightmove.co.uk' + a['href']] = spans.text
-                        print(spans.text)
-                        if(not first):
-                                send_email(places['https://www.rightmove.co.uk' + a['href']] + "\n\n" + 'https://www.rightmove.co.uk' + a['href'])
-    except Exception as ex:
-        print("cannot connect", ex)
-        time.sleep(5)
-
-for i in range(10):
-    for location in locations:
-        url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"])
-        find(req=url, first=True)
-        time.sleep(2)
-
-while True:
-    for location in locations:
-        url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"])
-        find(req=url, first=False)
-        time.sleep(2)
-    time.sleep(60)
+            rest_time = 4.0 * random.random()
+            print(f"sleeping for {rest_time} seconds")
+            time.sleep(rest_time)
+            
+    except Exception as no_more_properties_error:
+        print(no_more_properties_error)
+        print(f"found {index} properties in {area}")
