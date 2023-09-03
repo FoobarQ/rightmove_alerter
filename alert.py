@@ -32,9 +32,9 @@ EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
 SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
 BASE_URL = "https://www.rightmove.co.uk"
 RENT_URL = f"{BASE_URL}/property-to-rent/find.html"
-RIGHT_MOVE_FULL_PAGE_LENGTH = 24
+RIGHTMOVE_FULL_PAGE_LENGTH = 24
 
-def right_move_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0, index: int = 0):
+def rightmove_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0, index: int = 0):
     return f"{RENT_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&index={index}&dontShow={'%2C'.join(dontShow)}&furnishTypes=&keywords="
 
 def generate_is_present_function(cursor):
@@ -123,9 +123,9 @@ def main():
         all_listings_discovered = False
 
         while not all_listings_discovered:
-            url = right_move_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"], index=index)
+            url = rightmove_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"], index=index)
             new_listings = find_new_listings(url, id_is_in_database)
-            all_listings_discovered = len(new_listings) < RIGHT_MOVE_FULL_PAGE_LENGTH
+            all_listings_discovered = len(new_listings) < RIGHTMOVE_FULL_PAGE_LENGTH
             index += len(new_listings)
             rest_time = 4.0 * random.random()
             time.sleep(rest_time)
