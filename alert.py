@@ -37,7 +37,7 @@ class Listing:
             <img src="{self.image_url}" height="200px"/>
             <div style="text-align:center;">
                 <pre>
-                <h2>{self.listing_title}</h2><h5>{self.street_address} ({self.price})</h5><p style="word-break">{self.description}</p>
+                <h2><a href="{self.listing_url}">{self.listing_title}</a></h2><h5>{self.street_address} ({self.price})</h5><p style="word-break">{self.description}</p>
                 </pre>
             </div>
         </div>
@@ -120,6 +120,9 @@ def main():
     password = os.getenv("DATABASE_PASSWORD")
     port = os.getenv("DATABASE_PORT")
     host = os.getenv("DATABASE_HOST")
+    to = os.getenv("TO")
+    sender = os.getenv("FROM_SENDER")
+    creds = get_gmail_credentials()
 
     if (not database or not user or not password or not host or not port):
         print("Database options not filled")
@@ -146,12 +149,22 @@ def main():
             new_listings.extend(found_listings)
             rest_time = 4.0 * random.random()
             time.sleep(rest_time)
-            
-        for listing in new_listings[::-1]:
-            cursor.execute(*listing.insert_statement())
-        connection.commit()
-        print(f"found {index} properties in {area}")
 
+        print(f"found {len(new_listings)} properties in {area}")
+
+        for listing in new_listings[::-1]:
+            #   TODO: find out why this might evaluate true
+            #   if statement written after encountering exception
+            #   has never been triggered since, but leaving it for protection
+            if (id_is_in_database(listing.id)): 
+                print("Listing already found", listing.id)
+                continue
+            cursor.execute(*listing.insert_statement())
+            email_subject = f"{listing.listing_title}, {listing.street_address} - £{listing.price}"
+            send_email(creds=creds, to=to, sender=sender, subject=email_subject, body=listing.create_email_body())
+            time.sleep(5 * random.random())
+            connection.commit()
+        
     return 0
 
 main()
