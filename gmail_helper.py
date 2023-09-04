@@ -1,6 +1,5 @@
 import os
 import base64
-from email.message import EmailMessage
 
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
@@ -8,6 +7,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.compose']
@@ -33,14 +34,14 @@ def get_gmail_credentials(scopes=SCOPES):
     
     return creds
 
-def send_email(creds, to, sender, subject, body):
+def send_email(creds, to: str, sender: str, subject: str, body: str):
     """ From google docs"""
 
     try:
         service = build('gmail', 'v1', credentials=creds)
-        message = EmailMessage()
+        message = MIMEMultipart()
 
-        message.set_content(body)
+        message.attach(MIMEText(body, 'html'))
 
         message['To'] = to
         message['From'] = sender
