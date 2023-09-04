@@ -9,25 +9,6 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-def send_email(txt):
-    sender = 'noreply@gmail.com'
-    receivers = ['email@gmail.com']
-
-    msg = MIMEText(txt)
-    msg['Subject'] = "House Alert"
-    msg['From'] = sender
-    msg['To'] = ','.join(receivers)
-
-    try:
-        print("Try email")
-        smtpObj = smtplib.SMTP('smtp.gmail.com')
-        #smtpObj.login(sender_email, password)
-        smtpObj.sendmail(sender,receivers,msg.as_string())
-        print("Send email2")
-    except Exception as ex:
-        print("Unable to send email", ex)
-
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
 SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
 BASE_URL = "https://www.rightmove.co.uk"

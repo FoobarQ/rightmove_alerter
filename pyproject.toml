@@ -12,6 +12,9 @@ dependencies = [
     "bs4>=0.0.1",
     "psycopg2>=2.9.7",
     "python-dotenv>=1.0.0",
+    "google-api-python-client>=2.97.0",
+    "google-auth-httplib2>=0.1.0",
+    "google-auth-oauthlib>=1.0.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
