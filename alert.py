@@ -1,12 +1,12 @@
+import sys
 import requests
 from bs4 import BeautifulSoup
-import smtplib
 import time
-from email.mime.text import MIMEText
 import random
 import psycopg2
 import os
 from dotenv import load_dotenv
+from gmail_helper import send_email, get_gmail_credentials
 
 load_dotenv()
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
@@ -14,6 +14,46 @@ SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
 BASE_URL = "https://www.rightmove.co.uk"
 RENT_URL = f"{BASE_URL}/property-to-rent/find.html"
 RIGHTMOVE_FULL_PAGE_LENGTH = 24
+
+class Listing:
+    def __init__(self, id: str, listing_title: str, price: int, description: str, listing_url: str, country: str, street_address: str, image_url: str ) -> None:
+        self.id = id
+        self.listing_title = listing_title
+        self.price = price
+        self.description = description
+        self.listing_url = listing_url
+        self.country = country
+        self.street_address = street_address
+        self.image_url = image_url
+    
+    def insert_statement(self):
+        query = "INSERT INTO houses(id, listing_title, country, street_address, price, description, url, image_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        args_tuple = (self.id, self.listing_title, self.country, self.street_address, self.price, self.description, self.listing_url, self.image_url)
+        return query, args_tuple
+    
+    def create_email_body(self):
+        return f"""
+        <div style='display:flex;flex-wrap:wrap;'>
+            <img src="{self.image_url}" height="200px"/>
+            <div style="text-align:center;">
+                <pre>
+                <h2>{self.listing_title}</h2><h5>{self.street_address} ({self.price})</h5><p style="word-break">{self.description}</p>
+                </pre>
+            </div>
+        </div>
+        """
+
+    def __str__(self):
+        return f"""
+        id:             {self.id}
+        title:          {self.listing_title}
+        street address: {self.street_address}
+        country:        {self.country}
+        price:          {self.price}
+        description:    {self.description}
+        url:            {self.listing_url}
+        image_url:      {self.image_url}
+        """
 
 def rightmove_url_builder(location: str, minimum_bedrooms: int, max_price: int, dontShow: list[str]=[], radius: float = 0.0, index: int = 0):
     return f"{RENT_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&index={index}&dontShow={'%2C'.join(dontShow)}&furnishTypes=&keywords="
@@ -52,6 +92,7 @@ def find_new_listings(search_url: str, id_is_in_database):
 
         id = url_parts[2]
         description: str = description_element.find("span").get_text()
+        image_url: str = element.find("img", {"itemprop": "image"}).get("src")
 
         price: str = element.find("span", {"class": 'propertyCard-priceValue'}).get_text()
         price = price.replace(",", "").replace("£", "").replace("pcm", "")
@@ -64,18 +105,12 @@ def find_new_listings(search_url: str, id_is_in_database):
         title: str = element.find("h2", {"class": "propertyCard-title"}).get_text()
         title = title.strip()
 
+        current_listing = Listing(id=id, listing_title=title, price=price, description=description, listing_url=ad_url, country=country_code, street_address=street_address, image_url=image_url)
+
         if id_is_in_database(id):
             return new_listings
         else:
-            new_listings.append({
-                "id": id,
-                "listing_title": title,
-                "street_address": street_address,
-                "price": price,
-                "description": description,
-                "url": ad_url,
-                "country": country_code
-            })
+            new_listings.append(current_listing)
         
     return new_listings
 
@@ -100,17 +135,21 @@ def main():
     }
 
     for area, location in places.items():
-        index = 0
+        new_listings: list[Listing] = []
         all_listings_discovered = False
 
         while not all_listings_discovered:
+            index = len(new_listings)
             url = rightmove_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"], index=index)
-            new_listings = find_new_listings(url, id_is_in_database)
-            all_listings_discovered = len(new_listings) < RIGHTMOVE_FULL_PAGE_LENGTH
-            index += len(new_listings)
+            found_listings: list[Listing] = find_new_listings(url, id_is_in_database)
+            all_listings_discovered = len(found_listings) < RIGHTMOVE_FULL_PAGE_LENGTH
+            new_listings.extend(found_listings)
             rest_time = 4.0 * random.random()
             time.sleep(rest_time)
             
+        for listing in new_listings[::-1]:
+            cursor.execute(*listing.insert_statement())
+        connection.commit()
         print(f"found {index} properties in {area}")
 
     return 0
