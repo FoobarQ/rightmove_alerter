@@ -6,7 +6,7 @@ import random
 import psycopg2
 import os
 from dotenv import load_dotenv
-from gmail_helper import send_email, get_gmail_credentials
+from src.house_alerts.gmail_helper import get_gmail_credentials, send_email
 
 load_dotenv()
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
@@ -167,4 +167,5 @@ def main():
         
     return 0
 
-main()
+if __name__ == "__main__":
+    main()
