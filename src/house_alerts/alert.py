@@ -11,6 +11,7 @@ from src.house_alerts.gmail_helper import get_gmail_credentials, send_email
 load_dotenv()
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
 SOUTH_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028525%22%7D"
+new_area = "USERDEFINEDAREA%5E%7B%22id%22%3A8028516%7D"
 BASE_URL = "https://www.rightmove.co.uk"
 RENT_URL = f"{BASE_URL}/property-to-rent/find.html"
 RIGHTMOVE_FULL_PAGE_LENGTH = 24
@@ -31,16 +32,62 @@ class Listing:
         args_tuple = (self.id, self.listing_title, self.country, self.street_address, self.price, self.description, self.listing_url, self.image_url)
         return query, args_tuple
     
+    def create_email_row(self):
+        return f"""
+            <tr>
+                <td class="image">
+                    <img src="{self.image_url}"/>
+                </td>
+                <td>
+                    <div>
+                        <h2>
+                            <a href="{self.listing_url}">{self.listing_title}</a>
+                        </h2>
+                        <h5>{self.street_address} ({self.price})</h5>
+                        <p style="word-break">{self.description}</p>
+                    </div>
+                </td>
+            </tr>
+            """
+    
     def create_email_body(self):
         return f"""
-        <div style='display:flex;flex-wrap:wrap;'>
-            <img src="{self.image_url}" height="200px"/>
-            <div style="text-align:center;">
-                <pre>
-                <h2><a href="{self.listing_url}">{self.listing_title}</a></h2><h5>{self.street_address} ({self.price})</h5><p style="word-break">{self.description}</p>
-                </pre>
-            </div>
-        </div>
+        <html>
+            <head>
+                <style>
+                    .image {{
+                        width: 100px;
+                        padding: 20px;
+                    }}
+                    @media screen and (min-width: 1200px) {{
+                        .image {{
+                            width: 600px;
+                            padding: 20px;
+                        }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <table>
+                    <tbody>
+                        <tr>
+                            <td class="image">
+                                <img src="{self.image_url}"/>
+                            </td>
+                            <td>
+                                <div>
+                                    <h2>
+                                        <a href="{self.listing_url}">{self.listing_title}</a>
+                                    </h2>
+                                    <h5>{self.street_address} ({self.price})</h5>
+                                    <p style="word-break">{self.description}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </body>
+        </html>
         """
 
     def __str__(self):
@@ -66,20 +113,19 @@ def generate_is_present_function(cursor):
 
 def find_new_listings(search_url: str, id_is_in_database):
     new_listings = []
+    property_count = 0
 
     search_response = requests.get(search_url)
     found_all_properties = not search_response.ok
     if found_all_properties:
-        return new_listings
-    
+        return new_listings, property_count
     soup = BeautifulSoup(search_response.text, 'html.parser')
     html = soup.find_all("div", {"class": "propertyCard-wrapper"})
 
-    property_count = len(html)
-    found_all_properties = property_count == 0
+    found_all_properties = len(html) == 0
     if (found_all_properties):    
-        return new_listings
-
+        return new_listings, property_count
+    
     for element in html[1:]:    #   skip the promoted ad at the top
         description_element = element.find("div", {"class": "propertyCard-description"})
         relative_url: str = description_element.find("a").get('href')
@@ -88,7 +134,7 @@ def find_new_listings(search_url: str, id_is_in_database):
         found_all_properties = len(url_parts) < 2
 
         if (found_all_properties):
-            return new_listings
+            return new_listings, property_count
 
         id = url_parts[2]
         description: str = description_element.find("span").get_text()
@@ -106,13 +152,14 @@ def find_new_listings(search_url: str, id_is_in_database):
         title = title.strip()
 
         current_listing = Listing(id=id, listing_title=title, price=price, description=description, listing_url=ad_url, country=country_code, street_address=street_address, image_url=image_url)
-
+        property_count += 1
+        
         if id_is_in_database(id):
-            return new_listings
+            continue
         else:
             new_listings.append(current_listing)
         
-    return new_listings
+    return new_listings, property_count
 
 def main():
     database = os.getenv("DATABASE_NAME")
@@ -133,38 +180,54 @@ def main():
     id_is_in_database = generate_is_present_function(cursor=cursor)
 
     places = {
-        "South London": SOUTH_LONDON,
-        "East London": EAST_LONDON
+        # "South London": SOUTH_LONDON,
+        # "East London": EAST_LONDON,
+        "THE AREA I ACTUALLY WANT": new_area
     }
+    
+    criterias = [
+        {
+            "bedrooms": 1,
+            "max_price": 1600,
+        },
+    ]
 
     for area, location in places.items():
         new_listings: list[Listing] = []
-        all_listings_discovered = False
 
-        while not all_listings_discovered:
-            index = len(new_listings)
-            url = rightmove_url_builder(location=location, minimum_bedrooms=2, max_price=2500, dontShow=["retirement", "student", "houseShare"], index=index)
-            found_listings: list[Listing] = find_new_listings(url, id_is_in_database)
-            all_listings_discovered = len(found_listings) < RIGHTMOVE_FULL_PAGE_LENGTH
-            new_listings.extend(found_listings)
-            rest_time = 4.0 * random.random()
-            time.sleep(rest_time)
+        for criteria in criterias:
+            min_bedrooms = criteria["bedrooms"]
+            max_price = criteria["max_price"]
+            index = 0
+            all_listings_discovered = False
+            print(f'searching for {min_bedrooms} beds in {area} under {max_price}...')
+            while not all_listings_discovered:
+                url = rightmove_url_builder(location=location, minimum_bedrooms=min_bedrooms, max_price=max_price, dontShow=["retirement", "student", "houseShare"], index=index)
+                found_listings, found_listings_count = find_new_listings(url, id_is_in_database)
+                index += found_listings_count
+                all_listings_discovered = found_listings_count < RIGHTMOVE_FULL_PAGE_LENGTH
+                new_listings.extend(found_listings)
+                rest_time = 4.0 * random.random()
+                time.sleep(rest_time)
+            print(f'found {index} listings')
 
-        print(f"found {len(new_listings)} properties in {area}")
+        print(f"found {len(new_listings)} new properties in {area}")
 
         for listing in new_listings[::-1]:
             #   TODO: find out why this might evaluate true
             #   if statement written after encountering exception
             #   has never been triggered since, but leaving it for protection
             if (id_is_in_database(listing.id)): 
-                print("Listing already found", listing.id)
+                #print("Listing already found", listing.id)
                 continue
             cursor.execute(*listing.insert_statement())
             email_subject = f"{listing.listing_title}, {listing.street_address} - £{listing.price}"
             send_email(creds=creds, to=to, sender=sender, subject=email_subject, body=listing.create_email_body())
             time.sleep(5 * random.random())
             connection.commit()
-        
+    
+    time.sleep(10)
+
     return 0
 
 if __name__ == "__main__":
