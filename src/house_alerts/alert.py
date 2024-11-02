@@ -7,6 +7,7 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 from src.house_alerts.gmail_helper import get_gmail_credentials, send_email
+from windows_toasts import Toast, WindowsToaster
 
 load_dotenv()
 EAST_LONDON = "USERDEFINEDAREA%5E%7B%22id%22%3A%228028516%22%7D"
@@ -15,6 +16,7 @@ new_area = "USERDEFINEDAREA%5E%7B%22id%22%3A8028516%7D"
 BASE_URL = "https://www.rightmove.co.uk"
 RENT_URL = f"{BASE_URL}/property-to-rent/find.html"
 RIGHTMOVE_FULL_PAGE_LENGTH = 24
+BACKEND_LINK = "https://www.youtube.com/watch?v=hmLnKnNh2ns&ab_channel=AlessiaCaraVEVO"
 
 class Listing:
     def __init__(self, id: str, listing_title: str, price: int, description: str, listing_url: str, country: str, street_address: str, image_url: str ) -> None:
@@ -160,6 +162,14 @@ def find_new_listings(search_url: str, id_is_in_database):
             new_listings.append(current_listing)
         
     return new_listings, property_count
+
+def say_a_toast(text_fields: list[str], link: str):
+    toaster = WindowsToaster('House Alerter')
+    newToast = Toast()
+    newToast.text_fields = text_fields
+    newToast.launch_action = link
+    toaster.show_toast(newToast)
+    return
 
 def main():
     database = os.getenv("DATABASE_NAME")
