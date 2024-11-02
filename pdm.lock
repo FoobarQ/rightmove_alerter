@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.5.0"
-content_hash = "sha256:a8707626f398a92c092953b66b7787b843f495eeb0723fc61dcec86f9d723288"
+content_hash = "sha256:d87bbf9683786d5d090d209b6226af96a7b05011365281fa1214163ba51a5048"
 
 [[metadata.targets]]
 requires_python = ">=3.10"
@@ -557,6 +557,24 @@ files = [
 ]
 
 [[package]]
+name = "toasts-winrt"
+version = "1.0.0"
+requires_python = ">=3.8"
+summary = "Python WinRT bindings for Windows-Toasts"
+files = [
+    {file = "toasts-winrt-1.0.0.tar.gz", hash = "sha256:bf71ce565a4d5b5ae83e5e4061ea2148138b3c64adaaea0881c5cce8a94a394a"},
+    {file = "toasts_winrt-1.0.0-cp310-cp310-win32.whl", hash = "sha256:5e276a240a0f707ec2aba1c39c060f85529723723ce0180c2b4c2176bc41fb5c"},
+    {file = "toasts_winrt-1.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:adfd274e36973f9841e815a5affaa9b7448c34530b66a54b65a9ffc32035f388"},
+    {file = "toasts_winrt-1.0.0-cp310-cp310-win_arm64.whl", hash = "sha256:d7289a2b654b21320b67f8384010b6c2fc09781a3cf02b54736cdea99b03db19"},
+    {file = "toasts_winrt-1.0.0-cp311-cp311-win32.whl", hash = "sha256:aec4568def3e83cc6784ebea7c8770be29018aa8ff9b12e7da5b9d6c8b2e8dcf"},
+    {file = "toasts_winrt-1.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:f8459e6d2bd8bb2006d3f6543871f05d11673e0c5391ed1c3d66915509c9e5f3"},
+    {file = "toasts_winrt-1.0.0-cp311-cp311-win_arm64.whl", hash = "sha256:e6b49b964192947d44089ff9332da584384d6746f4a440cf588e0fd05048f697"},
+    {file = "toasts_winrt-1.0.0-cp312-cp312-win32.whl", hash = "sha256:4afd92ecb403e6c79dd1aa2b1e4aede302de00392b8df252813c1107b3ec53ef"},
+    {file = "toasts_winrt-1.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:1e2e91d2710019b2eeb8066ece9b4619c6fb1b45792cb8c26c25b0b1a5a07cab"},
+    {file = "toasts_winrt-1.0.0-cp312-cp312-win_arm64.whl", hash = "sha256:acb2edc54e707a624d42b16caa28f1008572c0d4c2d8d1407218c4ea3cfce234"},
+]
+
+[[package]]
 name = "twilio"
 version = "8.7.0"
 requires_python = ">=3.7.0"
@@ -591,6 +609,19 @@ summary = "HTTP library with thread-safe connection pooling, file post, and more
 files = [
     {file = "urllib3-1.26.16-py2.py3-none-any.whl", hash = "sha256:8d36afa7616d8ab714608411b4a3b13e58f463aee519024578e062e141dce20f"},
     {file = "urllib3-1.26.16.tar.gz", hash = "sha256:8f135f6502756bde6b2a9b28989df5fbe87c9970cecaa69041edcce7f0589b14"},
+]
+
+[[package]]
+name = "windows-toasts"
+version = "1.0.2"
+requires_python = ">=3.8"
+summary = "Python library used to send toast notifications on Windows machines"
+dependencies = [
+    "toasts-winrt==1.0.0",
+]
+files = [
+    {file = "Windows-Toasts-1.0.2.tar.gz", hash = "sha256:79aab12d4a2e5baa45832ace25adb5c62748decb6bd70354f8f4f0f30fd1b2d4"},
+    {file = "Windows_Toasts-1.0.2-py3-none-any.whl", hash = "sha256:e7f783324be23130b4fff3fa0cfce8f57ad4826906c688e3904d7d534e604bec"},
 ]
 
 [[package]]
