@@ -6,6 +6,7 @@ import random
 import psycopg2
 import os
 from dotenv import load_dotenv
+from collections.abc import Callable
 from src.house_alerts.gmail_helper import get_gmail_credentials, send_email
 
 load_dotenv()
@@ -106,12 +107,12 @@ def rightmove_url_builder(location: str, minimum_bedrooms: int, max_price: int, 
     return f"{RENT_URL}?locationIdentifier={location}&radius={radius}&minBedrooms={minimum_bedrooms}&maxPrice={max_price}&index={index}&dontShow={'%2C'.join(dontShow)}&furnishTypes=&keywords="
 
 def generate_is_present_function(cursor):
-    def id_is_in_database(id: str):
-        cursor.execute("SELECT id FROM houses WHERE id = %s", (id,))
+    def listing_is_in_database(listing: Listing):
+        cursor.execute("SELECT id FROM houses WHERE id = %s", (listing.id,))
         return cursor.fetchone() is not None
-    return id_is_in_database
+    return listing_is_in_database
 
-def find_new_listings(search_url: str, id_is_in_database):
+def find_new_listings(search_url: str, listing_is_in_database: Callable[[Listing], bool]):
     new_listings = []
     property_count = 0
 
@@ -159,7 +160,7 @@ def find_new_listings(search_url: str, id_is_in_database):
         current_listing = Listing(id=id, listing_title=title, price=price, description=description, listing_url=ad_url, country=country_code, street_address=street_address, image_url=image_url)
         property_count += 1
         
-        if id_is_in_database(id):
+        if listing_is_in_database(current_listing):
             continue
         else:
             new_listings.append(current_listing)
@@ -182,20 +183,21 @@ def main():
     
     connection = psycopg2.connect(user=user, password=password, database=database, host=host)
     cursor = connection.cursor()
-    id_is_in_database = generate_is_present_function(cursor=cursor)
+    listing_is_in_database = generate_is_present_function(cursor=cursor)
 
     places = {
         # "South London": SOUTH_LONDON,
         # "East London": EAST_LONDON,
         # "THE AREA I ACTUALLY WANT": new_area,
-        "Ethan and Dylan's new yard": "REGION^87490"
+        "Ethan and Dylan's new yard search area": "REGION^87490"
     }
     
     criterias = [
         {
             "bedrooms": 2,
             "max_price": 2000,
-            "listing_limit": 100
+            "email_limit": 100,
+            "listings_per_email": 8
         },
     ]
 
@@ -205,7 +207,8 @@ def main():
         for criteria in criterias:
             min_bedrooms = criteria["bedrooms"]
             max_price = criteria["max_price"]
-            listing_limit = criteria["listing_limit"]
+            criteria["listings_per_email"]
+            listing_limit = criteria["email_limit"] * criteria["listings_per_email"]
             index = 0
             all_listings_discovered = False
             print(f'searching for {min_bedrooms} beds in {area} under {max_price}...')
@@ -213,7 +216,7 @@ def main():
                 url = rightmove_url_builder(location=location, minimum_bedrooms=min_bedrooms, max_price=max_price, dontShow=["retirement", "student", "houseShare"], index=index)
                 if index == 0: print("url built")
                 if index == 0: print("finding listings")
-                found_listings, found_listings_count = find_new_listings(url, id_is_in_database)
+                found_listings, found_listings_count = find_new_listings(url, listing_is_in_database)
                 print(f"found {found_listings_count} new listings")
                 index += found_listings_count
                 all_listings_discovered = found_listings_count < RIGHTMOVE_FULL_PAGE_LENGTH or index >= listing_limit
@@ -224,18 +227,47 @@ def main():
 
         print(f"found {len(new_listings)} new properties in {area}")
 
-        for listing in new_listings[::-1]:
-            #   TODO: find out why this might evaluate true
-            #   if statement written after encountering exception
-            #   has never been triggered since, but leaving it for protection
-            if (id_is_in_database(listing.id)): 
-                #print("Listing already found", listing.id)
-                continue
-            cursor.execute(*listing.insert_statement())
-            email_subject = f"{listing.listing_title}, {listing.street_address} - £{listing.price}"
-            send_email(creds=creds, to=to, sender=sender, subject=email_subject, body=listing.create_email_body())
-            time.sleep(5 * random.random())
-            connection.commit()
+        new_listings = new_listings[::-1]
+        new_listings = list(filter(lambda x : not listing_is_in_database(x), new_listings))
+
+        if (len(new_listings) > 8):
+            for listing_chunk in [new_listings[x:x+8] for x in range(0, len(new_listings), 8)]:
+                for y in listing_chunk: cursor.execute(*y.insert_statement())
+                email_subject = f"{len(listing_chunk)} new properties in {area}"
+                email_body = f"""
+        <html>
+            <head>
+                <style>
+                    .image {{
+                        width: 50px;
+                        padding: 20px;
+                    }}
+                    @media screen and (min-width: 1200px) {{
+                        .image {{
+                            width: 600px;
+                            padding: 20px;
+                        }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <table>
+                    <tbody>
+                        {''.join([row.create_email_row() for row in listing_chunk])}
+                    </tbody>
+                </table>
+            </body>
+        </html>"""
+                send_email(creds=creds, to=to, sender=sender, subject=email_subject, body=email_body)
+                time.sleep(5 * random.random())
+                connection.commit()
+        else:
+            for listing in new_listings:
+                cursor.execute(*listing.insert_statement())
+                email_subject = f"{listing.listing_title}, {listing.street_address} - £{listing.price}"
+                send_email(creds=creds, to=to, sender=sender, subject=email_subject, body=listing.create_email_body())
+                time.sleep(5 * random.random())
+                connection.commit()
     
     time.sleep(10)
 
