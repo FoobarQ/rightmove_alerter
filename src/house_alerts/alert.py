@@ -187,13 +187,15 @@ def main():
     places = {
         # "South London": SOUTH_LONDON,
         # "East London": EAST_LONDON,
-        "THE AREA I ACTUALLY WANT": new_area
+        # "THE AREA I ACTUALLY WANT": new_area,
+        "Ethan and Dylan's new yard": "REGION^87490"
     }
     
     criterias = [
         {
-            "bedrooms": 1,
-            "max_price": 1600,
+            "bedrooms": 2,
+            "max_price": 2000,
+            "listing_limit": 100
         },
     ]
 
@@ -203,14 +205,18 @@ def main():
         for criteria in criterias:
             min_bedrooms = criteria["bedrooms"]
             max_price = criteria["max_price"]
+            listing_limit = criteria["listing_limit"]
             index = 0
             all_listings_discovered = False
             print(f'searching for {min_bedrooms} beds in {area} under {max_price}...')
             while not all_listings_discovered:
                 url = rightmove_url_builder(location=location, minimum_bedrooms=min_bedrooms, max_price=max_price, dontShow=["retirement", "student", "houseShare"], index=index)
+                if index == 0: print("url built")
+                if index == 0: print("finding listings")
                 found_listings, found_listings_count = find_new_listings(url, id_is_in_database)
+                print(f"found {found_listings_count} new listings")
                 index += found_listings_count
-                all_listings_discovered = found_listings_count < RIGHTMOVE_FULL_PAGE_LENGTH
+                all_listings_discovered = found_listings_count < RIGHTMOVE_FULL_PAGE_LENGTH or index >= listing_limit
                 new_listings.extend(found_listings)
                 rest_time = 4.0 * random.random()
                 time.sleep(rest_time)
