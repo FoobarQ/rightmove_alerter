@@ -24,7 +24,7 @@ def get_db_connection():
     global connection
     if connection == None:
         connection = psycopg.connect(
-            user=user, password=password, database=database, host=host
+            user=user, password=password, dbname=database, host=host
         )
 
     return connection

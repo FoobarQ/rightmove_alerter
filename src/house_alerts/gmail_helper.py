@@ -3,7 +3,7 @@ import base64
 import time
 import random
 
-from dal.connection import get_db_client, get_db_connection
+from src.dal.connection import get_db_connection
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -13,8 +13,8 @@ from googleapiclient.errors import HttpError
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from house_alerts.constants import SENDER
-from house_alerts.listing import Listing
+from src.house_alerts.constants import SENDER
+from src.house_alerts.listing import Listing
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = [
@@ -79,13 +79,15 @@ def send_email(creds, to: str, sender: str, subject: str, body: str):
 def send_emails(to: str, listings: list[Listing]):
 
     new_listings = listings[::-1]
-    cursor = get_db_client()
     connection = get_db_connection()
     creds = get_gmail_credentials()
 
     if len(new_listings) < 8:
         for listing in new_listings:
-            cursor.execute(*listing.insert_statement())
+            cursor = connection.cursor()
+            cursor.execute(*listing.update_statement())
+            cursor.close()
+            connection.commit()
             email_subject = (
                 f"{listing.listing_title}, {listing.street_address} - £{listing.price}"
             )
@@ -97,14 +99,16 @@ def send_emails(to: str, listings: list[Listing]):
                 body=listing.create_email_body(),
             )
             time.sleep(5 * random.random())
-            connection.commit()
 
     for listing_chunk in [
         new_listings[x : x + 8] for x in range(0, len(new_listings), 8)
     ]:
         for y in listing_chunk:
-            cursor.execute(*y.insert_statement())
-        email_subject = f"{len(listing_chunk)} new properties in {area}"
+            cursor = connection.cursor()
+            cursor.execute(*y.update_statement())
+            cursor.close()
+            connection.commit()
+        email_subject = f"{len(listing_chunk)} new rental properties found"
         email_body = f"""<html>
         <head>
             <style>
@@ -135,5 +139,4 @@ def send_emails(to: str, listings: list[Listing]):
             subject=email_subject,
             body=email_body,
         )
-        time.sleep(5 * random.random())
-        connection.commit()
+        time.sleep(15 * random.random())

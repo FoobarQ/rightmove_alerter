@@ -1,16 +1,19 @@
 class Listing:
     def __init__(
         self,
-        id: str,
+        user_id: str | None,
         listing_title: str,
+        country: str,
+        street_address: str,
         price: int,
         description: str,
         listing_url: str,
-        country: str,
-        street_address: str,
         image_url: str,
+        notified: bool,
+        id: str,
     ) -> None:
         self.id = id
+        self.user_id = user_id
         self.listing_title = listing_title
         self.price = price
         self.description = description
@@ -18,18 +21,13 @@ class Listing:
         self.country = country
         self.street_address = street_address
         self.image_url = image_url
+        self.notified = notified
 
-    def insert_statement(self):
-        query = "INSERT INTO houses(id, listing_title, country, street_address, price, description, url, image_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    def update_statement(self):
+        query = "UPDATE house SET notified = true WHERE id = %s AND user_id = %s"
         args_tuple = (
+            self.user_id,
             self.id,
-            self.listing_title,
-            self.country,
-            self.street_address,
-            self.price,
-            self.description,
-            self.listing_url,
-            self.image_url,
         )
         return query, args_tuple
 
@@ -43,8 +41,8 @@ class Listing:
             self.description,
             self.listing_url,
             self.image_url,
-            user_id,
             notified,
+            user_id,
         )
 
     def create_email_row(self):
