@@ -13,7 +13,7 @@ def get_user_searches(user_id: int):
     cursor = get_db_client()
     cursor.execute(
         """
-        SELECT location_identifier, name, house_share, retirement_home, student_accomodation, garden, parking, minimum_beds, maximum_beds, student_hall, furnished, unfurnished, part_furnished
+        SELECT location_identifier, name, house_share, retirement_home, student_accomodation, garden, parking, minimum_beds, maximum_beds, student_hall, furnished, unfurnished, part_furnished, price
         FROM search
         INNER JOIN "location" ON search.location_id=location.id
         INNER JOIN "criteria" ON search.criteria_id=criteria.id
@@ -40,6 +40,7 @@ class Search:
         furnished,
         unfurnished,
         part_furnished,
+        price,
     ):
         self.location_id = location_id
         self.location_name = location_name
@@ -54,9 +55,10 @@ class Search:
         self.furnished = furnished
         self.unfurnished = unfurnished
         self.part_furnished = part_furnished
+        self.price = price
 
     def to_url(self, index):
-        return f"{RENT_URL}?useLocationIdentifier=true&locationIdentifier={self.location_id}&rent=To+rent&radius=0.25&maxPrice={2500}&minBedrooms={self.minimum_beds}&index={index}"
+        return f"{RENT_URL}?useLocationIdentifier=true&locationIdentifier={self.location_id}&rent=To+rent&radius=0.0&maxPrice={self.price}&minBedrooms={self.minimum_beds}&index={index}&sortType=6"
 
 
 # https://www.rightmove.co.uk/property-to-rent/find.html?searchLocation=Zone+2%2C+London&useLocationIdentifier=true&locationIdentifier=REGION%5E93814&rent=To+rent&radius=0.25&maxPrice=2250&minBedrooms=3&_includeLetAgreed=on&includeLetAgreed=false

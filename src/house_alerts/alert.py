@@ -9,12 +9,10 @@ from src.house_alerts.gmail_helper import send_emails
 from src.house_alerts.scraper import get_listings_from_search
 import time
 import random
-from src.house_alerts.listing import Listing
 from src.house_alerts.constants import RIGHTMOVE_PAGE_SIZE
 
 
 def get_new_listings():
-    new_listings: list[Listing] = []
     for user in get_active_users():
         print(f"finding listings for {user.username}")
         for search in get_user_searches(user.id):
@@ -25,16 +23,13 @@ def get_new_listings():
                 listings_not_in_database = list(
                     filter(lambda x: not is_in_database(x, user), listings)
                 )
-                new_listings.extend(listings_not_in_database)
                 rest_time = 4.0 * random.random()
                 time.sleep(rest_time)
-                all_listings_discovered = (
-                    len(listings_not_in_database) < RIGHTMOVE_PAGE_SIZE
-                )
-                index += 1
+                all_listings_discovered = len(listings_not_in_database) == 0
+                index += RIGHTMOVE_PAGE_SIZE
 
-        print("adding to database")
-        add_listings_to_database(new_listings, user.id)
+                print(f"adding {len(listings_not_in_database)} to database")
+                add_listings_to_database(listings_not_in_database, user.id)
 
 
 def send_alerts():
