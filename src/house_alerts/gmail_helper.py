@@ -99,6 +99,7 @@ def send_emails(to: str, listings: list[Listing]):
                 body=listing.create_email_body(),
             )
             time.sleep(5 * random.random())
+        return
 
     for listing_chunk in [
         new_listings[x : x + 8] for x in range(0, len(new_listings), 8)
